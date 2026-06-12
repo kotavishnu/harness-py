@@ -4,6 +4,10 @@ from dataclasses import dataclass, field
 from typing import Literal
 from .model import client
 from .tools import ToolRegistry
+from .context import trim_context
+from .guardrails import GuardrailFn, GuardrailInput, default_guardrails
+
+MAX_CONTEXT_MESSAGES = 20
 
 
 @dataclass
@@ -19,6 +23,7 @@ class LoopIteration:
     outcome: Literal["tool_calls", "answer"]
     tool_events: list[ToolEvent]
     context_size: int
+    context_trimmed: bool
 
 
 @dataclass
@@ -33,11 +38,25 @@ async def run_loop(
     model: str,
     messages: list[dict],
     tools: ToolRegistry,
+    guardrail: GuardrailFn = default_guardrails,
 ) -> LoopResult:
     trace: list[LoopIteration] = []
 
     while True:
         iteration_index = len(trace) + 1
+
+        before = len(messages)
+        messages = trim_context(messages, MAX_CONTEXT_MESSAGES)
+        context_trimmed = len(messages) < before
+
+        check = guardrail(GuardrailInput(iterations=len(trace), messages=messages))
+        if not check.ok:
+            return LoopResult(
+                answer=check.reason,
+                iterations=len(trace),
+                trace=trace,
+                stopped_by="guardrail",
+            )
 
         sys.stdout.write(f"[iter {iteration_index}] calling model... ")
         sys.stdout.flush()
@@ -59,6 +78,7 @@ async def run_loop(
                 outcome="answer",
                 tool_events=[],
                 context_size=context_size,
+                context_trimmed=context_trimmed,
             ))
             return LoopResult(
                 answer=choice.message.content or "(no response)",
@@ -96,4 +116,5 @@ async def run_loop(
                 outcome="tool_calls",
                 tool_events=tool_events,
                 context_size=context_size,
+                context_trimmed=context_trimmed,
             ))
