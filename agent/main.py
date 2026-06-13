@@ -1,8 +1,5 @@
 import asyncio
-from .browser import BrowserSession
-from .tools import create_tools
-from .context import create_context
-from .loop import run_loop
+from .harness import run_harness, verify_successful_upvote, print_harness_result, HarnessOptions
 
 MODEL = "openai/gpt-3.5-turbo-0613"
 
@@ -20,18 +17,11 @@ async def main():
     print(f"Model: {MODEL}")
     print(f"Task:  upvote on Hacker News\n")
 
-    session = BrowserSession()
-    try:
-        await session.open()
-        tools = create_tools(session)
-        messages = create_context(TASK)
-        result = await run_loop(MODEL, messages, tools)
-
-        print(f"\nAnswer: {result.answer}")
-        print(f"Stopped by: {result.stopped_by}")
-        print(f"Iterations: {result.iterations}")
-    finally:
-        await session.close()
+    result = await run_harness(TASK, MODEL, HarnessOptions(
+        verify=verify_successful_upvote,
+        max_attempts=3,
+    ))
+    print_harness_result(result)
 
 
 if __name__ == "__main__":
