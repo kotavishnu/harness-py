@@ -1,7 +1,7 @@
 import json
 import sys
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Callable, Awaitable, Literal
 from .model import client
 from .tools import ToolRegistry
 from .context import trim_context
@@ -34,11 +34,15 @@ class LoopResult:
     stopped_by: Literal["model", "guardrail", "success"]
 
 
+LoginHandler = Callable[[], Awaitable["ToolEvent | None"]]
+
+
 async def run_loop(
     model: str,
     messages: list[dict],
+    guardrail: GuardrailFn,
     tools: ToolRegistry,
-    guardrail: GuardrailFn = default_guardrails,
+    login_handler: LoginHandler | None = None,
 ) -> LoopResult:
     trace: list[LoopIteration] = []
 
@@ -51,11 +55,12 @@ async def run_loop(
 
         check = guardrail(GuardrailInput(iterations=len(trace), messages=messages))
         if not check.ok:
+            stopped_by = "success" if check.reason.startswith("Successfully") else "guardrail"
             return LoopResult(
                 answer=check.reason,
                 iterations=len(trace),
                 trace=trace,
-                stopped_by="guardrail",
+                stopped_by=stopped_by,
             )
 
         sys.stdout.write(f"[iter {iteration_index}] calling model... ")
@@ -110,6 +115,15 @@ async def run_loop(
                     "tool_call_id": call.id,
                     "content": result,
                 })
+
+            if login_handler:
+                login_event = await login_handler()
+                if login_event:
+                    tool_events.append(login_event)
+                    messages.append({
+                        "role": "user",
+                        "content": "Authentication completed by harness. You are now logged in. Navigate back to https://news.ycombinator.com and complete your upvote task.",
+                    })
 
             trace.append(LoopIteration(
                 index=iteration_index,

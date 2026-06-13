@@ -43,4 +43,18 @@ def combine_guardrails(*fns: GuardrailFn) -> GuardrailFn:
     return check
 
 
+def stop_after_upvote(get_upvoted_story: Callable[[], dict | None]) -> GuardrailFn:
+    def check(input: GuardrailInput) -> GuardrailResult:
+        story = get_upvoted_story()
+        if story:
+            info = (
+                f'"{story["title"]}" (rank {story["rank"]})'
+                if story.get("title") and story.get("rank")
+                else f'story ID {story["id"]}'
+            )
+            return GuardrailResult(ok=False, reason=f"Successfully upvoted {info}")
+        return GuardrailResult(ok=True)
+    return check
+
+
 default_guardrails = combine_guardrails(max_iterations(15), max_messages(50))

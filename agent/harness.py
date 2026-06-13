@@ -4,10 +4,11 @@ from dataclasses import dataclass
 from typing import Callable, Literal
 
 from .browser import BrowserSession
-from .tools import create_tools
+from .tools import create_tools, ToolHooks
 from .context import create_context
-from .guardrails import default_guardrails
+from .guardrails import combine_guardrails, default_guardrails, stop_after_upvote
 from .loop import LoopIteration, run_loop
+from .login_handler import create_login_handler
 
 
 @dataclass
@@ -82,11 +83,35 @@ async def run_harness(
 
 async def _run_harness_attempt(task: str, model: str) -> HarnessExecutionResult:
     session = BrowserSession()
+    upvoted_story: dict | None = None
+    stories_data: list = []
+
     await session.open()
     try:
-        tools = create_tools(session)
+        def on_upvote_success(story_id: str) -> None:
+            nonlocal upvoted_story
+            story = next((s for s in stories_data if str(s.get("id")) == story_id), None)
+            upvoted_story = (
+                {"id": story_id, "title": story.get("title"), "rank": story.get("rank")}
+                if story else {"id": story_id}
+            )
+            print(f"\n[harness] Upvote successful for story ID {story_id} - forcing completion\n")
+
+        def on_stories_loaded(stories: list) -> None:
+            nonlocal stories_data
+            stories_data = stories
+
+        hooks = ToolHooks(on_upvote_success=on_upvote_success, on_stories_loaded=on_stories_loaded)
+        tools = create_tools(session, hooks)
+
+        guardrails = combine_guardrails(
+            stop_after_upvote(lambda: upvoted_story),
+            default_guardrails,
+        )
+
         messages = create_context(task)
-        result = await run_loop(model, messages, tools, default_guardrails)
+        login_handler = create_login_handler(session)
+        result = await run_loop(model, messages, guardrails, tools, login_handler)
         return HarnessExecutionResult(
             answer=result.answer,
             iterations=result.iterations,
