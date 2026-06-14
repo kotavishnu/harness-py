@@ -9,7 +9,6 @@ This project implements two complementary harness systems:
 - **Agent Harness** (`agent/`) — runs a tool-calling loop where an LLM can browse the web, click elements, and navigate pages to complete a real task. The demo task: upvote a story on Hacker News.
 - **Eval Harness** (`eval/`) — scores multiple models against a fixed dataset of questions designed with trap answers, measuring accuracy, hallucination rate, and latency.
 
-Both systems are ported from a TypeScript reference implementation in `ref_repo/basically-ai-harness/`. Comparing the two repos side-by-side is a good way to understand the architectural decisions.
 
 ---
 
@@ -159,6 +158,4 @@ Add a function `(actual: str, expected: str) -> float` to `eval/scorers.py` and 
 
 ---
 
-## Reference Implementation
 
-`ref_repo/basically-ai-harness/` is the original TypeScript harness this project mirrors. The file numbering there (1-agent-tools, 2-agent-model, ...) maps directly to the module structure here. It is useful for understanding the design intent when the Python code is ambiguous.
