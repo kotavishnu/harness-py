@@ -1,15 +1,18 @@
 import asyncio
 from .harness import run_harness, verify_successful_upvote, print_harness_result, HarnessOptions
 
-MODEL = "openai/gpt-3.5-turbo-0613"
+MODEL = "openai/gpt-3.5-turbo-0613"#nvidia/nemotron-nano-9b-v2:free"#openai/gpt-oss-120b:free"#"openrouter/free"#"#poolside/laguna-xs.2:free"#"openai/gpt-3.5-turbo-0613"#"nvidia/nemotron-3-super-120b-a12b:free"
 
 TASK = """
 Upvote a story on Hacker News.
 
-Go to https://news.ycombinator.com.
-Call browser_get_stories to see ranked stories with their IDs and voted status.
-Find the highest-ranked story where alreadyVoted is false.
-Click its upvote arrow using the exact selector: a[id="up_STORYID"] (replace STORYID with the actual id).
+1. Go to https://news.ycombinator.com.
+2. Call browser_get_stories to get ranked stories with their IDs and voted status.
+3. Find the highest-ranked story where alreadyVoted is false. Note its ID.
+4. Click its upvote arrow using the exact selector: a[id="up_STORYID"] (replace STORYID with the actual id).
+5. If clicking redirects to a login page, call harness_auto_login to authenticate.
+6. After authentication, click the same upvote arrow again: a[id="up_STORYID"].
+7. You are done when the upvote click succeeds without redirecting to login.
 """.strip()
 
 
