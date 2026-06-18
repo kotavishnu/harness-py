@@ -17,7 +17,7 @@ class GuardrailResult:
 GuardrailFn = Callable[[GuardrailInput], GuardrailResult]
 
 
-def max_iterations(limit: int = 15) -> GuardrailFn:
+def max_iterations(limit: int = 10) -> GuardrailFn:
     def check(input: GuardrailInput) -> GuardrailResult:
         if input.iterations >= limit:
             return GuardrailResult(ok=False, reason=f"Guardrail: reached iteration limit ({limit})")
@@ -43,4 +43,4 @@ def combine_guardrails(*fns: GuardrailFn) -> GuardrailFn:
     return check
 
 
-default_guardrails = combine_guardrails(max_iterations(15), max_messages(50))
+default_guardrails = combine_guardrails(max_iterations(10), max_messages(50))
