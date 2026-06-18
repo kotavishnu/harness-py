@@ -43,4 +43,4 @@ def combine_guardrails(*fns: GuardrailFn) -> GuardrailFn:
     return check
 
 
-default_guardrails = combine_guardrails(max_iterations(15), max_messages(50))
+default_guardrails = combine_guardrails(max_iterations(8), max_messages(40))
